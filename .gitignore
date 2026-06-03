@@ -1,0 +1,33 @@
+# 数据库（每个人用自己的）
+*.db
+*.db-journal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Claude / Superpowers 配置
+.claude/
+.superpowers/
+
+# 本地配置
+.env
+.env.local
+
+# macOS
+.DS_Store
+
+# 同步日志
+sync.log
+
+# 临时文件
+*.tmp
+*.swp
