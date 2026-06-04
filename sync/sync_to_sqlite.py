@@ -7,13 +7,13 @@ import sqlite3
 from datetime import datetime
 
 # 路径配置
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KNOWLEDGE_DIR = os.path.join(BASE_DIR, 'knowledge')
-DB_PATH = os.path.join(BASE_DIR, 'db', 'knowledge.db')
+KNOWLEDGE_BASE_DIR = "E:/知识库"
+KNOWLEDGE_DIR = os.path.join(KNOWLEDGE_BASE_DIR, 'markdown')
+DB_PATH = os.path.join(KNOWLEDGE_BASE_DIR, 'sqlite', 'knowledge.db')
 
 def init_db():
     """初始化数据库，创建表"""
-    os.makedirs(os.path.join(BASE_DIR, 'db'), exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 

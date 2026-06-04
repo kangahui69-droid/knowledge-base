@@ -8,8 +8,10 @@
 
 ## 知识库路径
 
-- Markdown 文件：`E:/java/Intelligent_Learning/knowledge/`
-- SQLite 数据库：`E:/java/Intelligent_Learning/db/knowledge.db`
+- 知识库根目录：`E:/知识库/`
+- Markdown 文件：`E:/知识库/markdown/`
+- SQLite 数据库：`E:/知识库/sqlite/knowledge.db`
+- 项目代码目录：`E:/java/Intelligent_Learning/`
 - 设计文档：`E:/java/Intelligent_Learning/个人知识库系统设计文档.md`
 
 ## 知识库分类

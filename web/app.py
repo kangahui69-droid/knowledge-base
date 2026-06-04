@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'db', 'knowledge.db')
+DB_PATH = "E:/知识库/sqlite/knowledge.db"
 
 def get_db():
     if 'db' not in g:
