@@ -34,6 +34,7 @@ def init_db():
             priority TEXT DEFAULT '中',
             related_ids TEXT DEFAULT '[]',
             personal_notes TEXT DEFAULT '',
+            sort_order INTEGER DEFAULT 0,
             review_count INTEGER DEFAULT 0,
             last_reviewed_at DATETIME,
             next_review_date DATETIME,
@@ -41,6 +42,12 @@ def init_db():
             updated_at DATETIME NOT NULL DEFAULT (datetime('now', 'localtime'))
         )
     ''')
+
+    # 添加 sort_order 列（兼容旧数据库）
+    try:
+        cursor.execute('ALTER TABLE knowledge_points ADD COLUMN sort_order INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
 
     # 创建索引
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_category ON knowledge_points(category)')
@@ -82,8 +89,12 @@ def extract_code_examples(body):
     """从正文中提取代码块"""
     code_blocks = re.findall(r'```[\s\S]*?```', body)
     code_example = '\n'.join(code_blocks)
-    # 移除正文中的代码块
-    content = re.sub(r'```[\s\S]*?```', '', body)
+    # 保留代码块位置的标记，方便前端重建结构
+    content = body
+    for block in code_blocks:
+        content = content.replace(block, '\n:::code-block:::\n')
+    content = re.sub(r':::code-block:::\s*:::code-block:::', '', content)
+    content = re.sub(r'\n{3,}', '\n\n', content)
     return content.strip(), code_example.strip()
 
 def get_all_markdown_files():
@@ -110,6 +121,12 @@ def sync():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+
+    # 确保 sort_order 列存在（兼容旧数据库）
+    try:
+        cursor.execute('ALTER TABLE knowledge_points ADD COLUMN sort_order INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass
 
     # 获取已有的知识点（用于保留复习数据）
     cursor.execute("SELECT id, title, category, sub_category, mastery, review_count, last_reviewed_at, next_review_date FROM knowledge_points")
@@ -156,6 +173,7 @@ def sync():
                         priority = ?,
                         related_ids = ?,
                         personal_notes = ?,
+                        sort_order = ?,
                         updated_at = ?
                     WHERE id = ?
                 ''', [
@@ -169,6 +187,7 @@ def sync():
                     frontmatter.get('priority', '中'),
                     frontmatter.get('related_ids', '[]'),
                     frontmatter.get('personal_notes', ''),
+                    int(frontmatter.get('sort_order', 0)),
                     now,
                     record['id']
                 ])
@@ -178,8 +197,8 @@ def sync():
                     INSERT INTO knowledge_points (
                         title, category, sub_category, content, code_example,
                         tags, status, mastery, difficulty, level, source,
-                        priority, related_ids, personal_notes, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        priority, related_ids, personal_notes, sort_order, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', [
                     title,
                     category,
@@ -195,6 +214,7 @@ def sync():
                     frontmatter.get('priority', '中'),
                     frontmatter.get('related_ids', '[]'),
                     frontmatter.get('personal_notes', ''),
+                    int(frontmatter.get('sort_order', 0)),
                     now,
                     now
                 ])

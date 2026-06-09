@@ -39,16 +39,16 @@ def get_points():
     db = get_db()
     if category and sub_category:
         cursor = db.execute(
-            "SELECT * FROM knowledge_points WHERE category = ? AND sub_category = ? AND status != '废弃'",
+            "SELECT * FROM knowledge_points WHERE category = ? AND sub_category = ? AND status != '废弃' ORDER BY sort_order ASC",
             [category, sub_category]
         )
     elif category:
         cursor = db.execute(
-            "SELECT * FROM knowledge_points WHERE category = ? AND status != '废弃'",
+            "SELECT * FROM knowledge_points WHERE category = ? AND status != '废弃' ORDER BY sort_order ASC",
             [category]
         )
     else:
-        cursor = db.execute("SELECT * FROM knowledge_points WHERE status != '废弃'")
+        cursor = db.execute("SELECT * FROM knowledge_points WHERE status != '废弃' ORDER BY sort_order ASC")
 
     points = [dict(row) for row in cursor]
     return jsonify(points)
@@ -69,7 +69,7 @@ def search():
     keyword = request.args.get('q', '')
     db = get_db()
     cursor = db.execute(
-        "SELECT * FROM knowledge_points WHERE (title LIKE ? OR content LIKE ? OR tags LIKE ?) AND status != '废弃'",
+        "SELECT * FROM knowledge_points WHERE (title LIKE ? OR content LIKE ? OR tags LIKE ?) AND status != '废弃' ORDER BY sort_order ASC",
         [f'%{keyword}%', f'%{keyword}%', f'%{keyword}%']
     )
     points = [dict(row) for row in cursor]
@@ -85,6 +85,40 @@ def flashcard():
     if row:
         return jsonify(dict(row))
     return jsonify(None)
+
+@app.route('/api/flashcard/answer', methods=['POST'])
+def flashcard_answer():
+    data = request.get_json()
+    point_id = data.get('id')
+    correct = data.get('correct', False)
+
+    db = get_db()
+
+    # 获取当前 mastery
+    cursor = db.execute("SELECT mastery FROM knowledge_points WHERE id = ?", [point_id])
+    row = cursor.fetchone()
+    if not row:
+        return jsonify({'error': '知识点不存在'}), 404
+
+    current_mastery = row['mastery']
+
+    # 计算新 mastery
+    if correct:
+        new_mastery = min(5, current_mastery + 1)
+    else:
+        new_mastery = max(1, current_mastery - 1)
+
+    # 更新数据库
+    db.execute('''
+        UPDATE knowledge_points
+        SET mastery = ?,
+            review_count = review_count + 1,
+            last_reviewed_at = datetime('now', 'localtime')
+        WHERE id = ?
+    ''', [new_mastery, point_id])
+    db.commit()
+
+    return jsonify({'success': True, 'mastery': new_mastery})
 
 @app.route('/api/test')
 def test():
@@ -123,6 +157,43 @@ def test():
     return jsonify({
         'question': dict(question),
         'options': wrong_options
+    })
+
+@app.route('/api/test/answer', methods=['POST'])
+def test_answer():
+    data = request.get_json()
+    question_id = data.get('question_id')
+    selected_id = data.get('selected_id')
+
+    db = get_db()
+
+    # 获取题目信息
+    cursor = db.execute("SELECT * FROM knowledge_points WHERE id = ?", [question_id])
+    question = cursor.fetchone()
+    if not question:
+        return jsonify({'error': '题目不存在'}), 404
+
+    is_correct = (selected_id == question_id)
+
+    # 如果答对了，更新 mastery
+    if is_correct:
+        current_mastery = question['mastery']
+        new_mastery = min(5, current_mastery + 1)
+        db.execute('''
+            UPDATE knowledge_points
+            SET mastery = ?,
+                review_count = review_count + 1,
+                last_reviewed_at = datetime('now', 'localtime')
+            WHERE id = ?
+        ''', [new_mastery, question_id])
+        db.commit()
+    else:
+        new_mastery = question['mastery']
+
+    return jsonify({
+        'correct': is_correct,
+        'correct_id': question_id,
+        'mastery': new_mastery
     })
 
 if __name__ == '__main__':
